@@ -1,51 +1,21 @@
 # Architecture
 
-## 1. Android side
+## Runtime path
 
-The Android app is the user-facing product. It handles:
+`Compose UI -> CallController -> Transport -> Nearby Connections -> peer phone`
 
-- UI and navigation
-- device identity and UI state
-- call flow state machine
-- audio capture and playback via Android APIs
-- abstraction around RF transport
-- future USB / hardware integration via host API adapters
+The audio path is `AudioRecord (VOICE_COMMUNICATION) -> Android Opus encoder -> bounded framed bytes -> Nearby byte payload -> peer decoder -> jitter buffer -> AudioTrack`.
 
-The project uses modern Android patterns:
+`Transport` is the boundary for peer discovery, connection, authentication confirmation, call/audio send/receive, disconnect and status. `NearbyConnectionsTransport` is the selected local, serverless implementation using `Strategy.P2P_POINT_TO_POINT`.
 
-- Kotlin
-- Jetpack Compose
-- ViewModel + StateFlow
-- Coroutines
+## Security boundary
 
-## 2. RF side
+Nearby Connections encrypts the established connection. Both devices receive the same authentication digits and the UI requires the user to compare and confirm before accepting. That authenticates this connection session, not a durable account or long-term pinned peer identity.
 
-The actual RF send/receive path is intentionally kept outside the app’s core logic. The app interacts with an RF transport abstraction instead of assuming a single chip or protocol.
+## Background operation
 
-This allows a future replacement of the underlying hardware without restructuring the app.
+`CallAudioService` owns capture/playback during a call and runs as a foreground service with microphone and connected-device service types. The service reports startup failures to the controller; a call is not marked active until audio startup reports success.
 
-## 3. Simulation-first strategy
+## Verification boundary
 
-The repository contains a `MockRfTransport` implementation that is explicitly labeled simulation-only.
-
-This allows the app to be developed, tested, and refined before actual RF hardware exists.
-
-## 4. Real hardware architecture
-
-Real hardware must be designed around:
-
-Android phone -> USB-C host -> RF gateway -> digital RF transceiver -> air
-
-This is the realistic boundary where Android can interact with external gateways.
-
-## 5. Architecture boundaries
-
-- `domain/model` holds state and data structures.
-- `service` contains call flow logic and simulator coordination.
-- `data/rf` contains transport and packet structures.
-- `audio` contains local microphone and speaker pipeline logic.
-- `ui` contains Compose screens and state rendering.
-
-## 6. What this prototype proves
-
-The prototype proves that the app can behave like a full-duplex radio-call app at the UI and call-control layer while remaining technologically honest about RF limitations.
+JVM tests cover frame parsing, jitter ordering and state transitions. An instrumented test exercises the platform Opus encoder. No physical two-phone run has been performed; all actual Nearby radio behavior, codec compatibility, routing, interruption handling, range and latency remain unverified. See the manual test script.

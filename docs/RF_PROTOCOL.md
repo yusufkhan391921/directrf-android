@@ -1,63 +1,14 @@
-# RF Protocol Design
+# Nearby Frame Protocol
 
-## 1. Packet structure
+The selected transport is Google Nearby Connections using `P2P_POINT_TO_POINT`. Nearby Connections handles device discovery, connection lifecycle and encrypted local delivery; the app does not implement a raw Bluetooth or Wi-Fi protocol.
 
-A production packet should include fields such as:
+The app sends Nearby `BYTES` payloads with a compact binary envelope:
 
-- MAGIC
-- VERSION
-- PACKET_TYPE
-- SESSION_ID
-- SENDER_ID
-- RECEIVER_ID
-- CHANNEL_ID
-- SEQUENCE_NUMBER
-- TIMESTAMP
-- TTL
-- PAYLOAD_LENGTH
-- PAYLOAD
-- AUTH_TAG
+- Four-byte `DRF1` magic.
+- One-byte frame type.
+- Audio: 64-bit sequence, 64-bit capture timestamp, 16-bit encoded length, Opus packet.
+- Control: one-byte call signal (`CALL`, `ACCEPT`, `DECLINE`, `END`).
 
-The current repository uses a simplified in-memory packet object for the simulation layer and is not a production-transmission stack.
+The decoder rejects unknown headers/types, malformed lengths and frames larger than 4096 bytes. Audio frames are sequenced and passed to a bounded local jitter buffer. Nearby encrypts connection payloads; payload fields are not separately encrypted by this app.
 
-## 2. Packet types
-
-The target protocol includes:
-
-- HELLO
-- DISCOVERY
-- CALL_REQUEST
-- CALL_ACCEPT
-- CALL_REJECT
-- CALL_END
-- AUDIO
-- ACK
-- HEARTBEAT
-- CHANNEL_JOIN
-- CHANNEL_LEAVE
-- DEVICE_INFO
-- ERROR
-
-## 3. Real-time audio transport
-
-For live voice, the app should not rely on TCP semantics. A UDP-like or best-effort packet model is appropriate:
-
-- low latency
-- packet loss tolerance
-- jitter tolerance
-- real-time voice is not a reliable stream
-
-## 4. Important caveat
-
-This repository does not simulate the final actual wireless radio stack or the RF hardware protocol. It simulates call flow and device state only.
-
-## 5. Future work
-
-A production implementation will need:
-
-- duplicate detection
-- reordering protection
-- sequence validation
-- heartbeat monitoring
-- packet validation/authentication
-- encryption metadata and replay protection
+This framing has local unit coverage. Interoperability, timing and delivery over physical phones remain unverified.

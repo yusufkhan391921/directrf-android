@@ -1,0 +1,2 @@
+*.pdf binary
+gradlew.bat text eol=crlf

@@ -1,36 +1,12 @@
-# Hardware Architecture
+# Device Requirements
 
-## 1. Accepted reality
+No external RF gateway or radio module is used by this transport. The radio link is provided by the Bluetooth and Wi-Fi hardware already in two Android phones through Google Nearby Connections.
 
-Android cannot directly command the phone’s internal cellular modem for arbitrary private RF networking.
+Requirements:
 
-The realistic architecture is therefore:
+- Two Android phones running Android 10 or later.
+- Google Play services installed on both phones.
+- Bluetooth and Wi-Fi radios enabled.
+- Working microphone and audio output on both phones.
 
-Android phone -> USB host -> RF gateway/controller -> digital RF transceiver -> RF link
-
-## 2. Prototype architecture
-
-For the prototype, use:
-
-- one Android phone
-- USB-C connection to an external gateway board
-- simulation layer in the app until hardware is ready
-
-## 3. Future production requirements
-
-A production design will need:
-
-- host-capable USB-C connectivity
-- external RF transceiver with legal operating band
-- appropriate antennas and matching network
-- RF link management logic
-- power management and battery awareness
-- hardware health and USB status tracking
-
-## 4. Legal requirement
-
-The final RF frequency, power, bandwidth, antenna, and duty cycle must comply with applicable Indian wireless regulation. Do not select arbitrary frequencies or claim a legal mode without checking the actual rules.
-
-## 5. What the code does not claim
-
-This project does not claim to create arbitrary RF transmissions directly from the Android app itself. The app only provides the UI and control layer while the external hardware performs the actual RF path.
+The expected useful range is short (roughly 10-100 m in suitable conditions), but this repository contains no physical range measurements. Walls, interference, device implementation and environment can reduce range significantly. This is not a substitute for a licensed custom RF network and does not use the cellular modem.

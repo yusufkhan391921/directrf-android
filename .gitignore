@@ -8,3 +8,12 @@
 /captures
 .externalNativeBuild
 .cxx
+*.jks
+*.keystore
+*.pem
+*.p12
+.env
+.env.*
+credentials.json
+keystore.properties
+signing.properties

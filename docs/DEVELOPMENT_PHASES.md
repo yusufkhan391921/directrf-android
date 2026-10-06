@@ -1,59 +1,22 @@
-# Development Phases
+# Development and Verification Status
 
-## Phase 1: project and UI
+## Implemented in source
 
-- Create Android project
-- Add Compose UI shell
-- Implement basic device identity and settings state
-- Add mock RF transport layer
+- Nearby Connections `P2P_POINT_TO_POINT` discovery and connection.
+- User-confirmed matching authentication digits before connection acceptance.
+- A transport interface and bounded binary audio/control frame format.
+- Real platform Opus encoder/decoder setup, audio capture/playback, bounded jitter buffer, available AEC/noise-suppression effects, mute/output routing and foreground call service.
+- Event-driven call states for discovery, pairing, incoming/outgoing calls, audio startup, peer loss and errors.
+- JVM tests for frame codec, jitter buffer and state machine; an instrumented Opus encoder test.
 
-## Phase 2: discovery
+## Not verified
 
-- Simulate nearby devices
-- Present RF status and connection state
-- Prepare for future call initiation
+No physical Android devices were attached during development. The Nearby API integration has only been compiled, not exercised over the air. The instrumented codec test has only been compiled. Do not claim successful pairing, two-way voice, internet independence, screen-off survival, range, latency, or reconnection until the test script passes on actual target devices.
 
-## Phase 3: call signaling
+## Required before release
 
-- Request call
-- Ringing state
-- Accept and reject flow
-- End call flow
-
-## Phase 4: local audio pipeline
-
-- microphone capture
-- playback path
-- basic audio loopback and call controls
-
-## Phase 5: simulated RF audio transport
-
-- packet delivery simulation
-- latency and packet loss behavior
-- connection health monitoring
-
-## Phase 6: full-duplex call testing
-
-- simultaneous bidirectional call handling in the UI layer
-- state tracking for active call and timers
-
-## Phase 7: USB gateway integration
-
-- add host USB abstraction
-- define gateway interface
-- keep app hardware-independent
-
-## Phase 8: real hardware
-
-- connect to a legal RF gateway and transceiver
-- validate with a real hardware test bench
-
-## Phase 9: encryption
-
-- key exchange and session keys
-- secure audio and signaling
-
-## Phase 10: channels and future features
-
-- logical channel layer
-- multi-user group communication as a future feature
+1. Run the manual two-phone script on multiple Android models and record results.
+2. Fix any codec, permission, foreground-service, route, lifecycle or reconnect failures observed.
+3. Measure actual connection setup, end-to-end latency and usable range in documented conditions.
+4. Complete a privacy/security review and select a source license.
+5. Configure release signing outside Git and confirm repository ownership/remote before publishing.

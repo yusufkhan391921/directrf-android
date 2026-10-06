@@ -1,153 +1,52 @@
 # DirectRF
 
-DirectRF is a phase-based Android prototype for a direct radio voice system that uses a dedicated RF gateway and RF transceiver chain instead of cellular, Wi-Fi, Bluetooth, or cloud infrastructure.
+DirectRF is an Android-to-Android nearby voice-call app built on Google Nearby Connections. It is designed for two Android phones in short range, without an app signaling server or internet access during calls. Nearby uses the phones' Bluetooth and Wi-Fi radios; this is not custom RF hardware and does not access the cellular modem.
 
-This project is intentionally built around a realistic architecture:
+## Current status
 
-- Android app manages the UX, call flow, audio pipeline, and device logic.
-- External RF hardware performs the actual over-the-air radio transmission.
-- The app includes a simulation layer so development can proceed before real RF hardware exists.
+The code now includes a Nearby point-to-point transport, peer discovery and connection, on-device authentication-code confirmation, Opus `MediaCodec` capture/decoding, a bounded jitter buffer, optional Android echo cancellation/noise suppression, a microphone foreground service, mute and output routing, and call-state/unit/instrumented tests.
 
-The core design goal is: a normal call-like full-duplex voice experience over an offline RF link, without pretending that Android can directly drive arbitrary cellular RF modems.
+**Real-device status: UNVERIFIED.** This project has not yet been run on two physical Android phones. The build and local JVM tests do not prove discovery, pairing, Opus interoperability, two-way audio, screen-off behavior, range, latency, or reconnection. Follow [the manual two-phone test](docs/MANUAL_TWO_PHONE_TEST.md) before describing calls as working or publishing a release.
 
-## What the app does
+Expected useful range is short, roughly **10-100 m depending on devices and conditions**. That is an estimate, not a measurement from this project; walls, interference, phone models, radio state and environment can reduce it substantially. No range or latency guarantee is made.
 
-- Display connected RF hardware and device identity
-- Simulate nearby device discovery
-- Show call states and a simple call lifecycle
-- Support simulated incoming and outgoing calls
-- Demonstrate a full-duplex call UI without a push-to-talk button
-- Provide local microphone loopback and call control state flow
-- Keep the architecture modular so an RF transport can later be swapped for real hardware
+## Requirements
 
-## Realistic system constraint
+- Two Android phones running Android 10 (API 29) or later.
+- Google Play services on both phones for Nearby Connections.
+- Bluetooth and Wi-Fi radios enabled; mobile data, an internet connection, accounts and an app server are not part of the call path.
+- Microphone permission to call. Nearby/legacy location permissions are requested at runtime as required by Android version.
 
-A normal Android app cannot directly access the phone’s internal cellular modem or arbitrarily control the RF stack for custom voice networking. The realistic design is:
+The app has no `INTERNET` permission. Google Play services must be present; downloading/updating the app or Play services may require internet before an offline session.
 
-Android phone -> USB host -> RF gateway/controller -> digital RF transceiver -> RF link -> remote side
+## Build
 
-This repository does not fake unsupported APIs or claim that Android is transmitting arbitrary RF directly.
+Use Java 17 and Android SDK platform 35 (or Android Studio). The Gradle wrapper pins Gradle 8.7. From the project root:
 
-## Architecture overview
-
-The application follows this abstraction:
-
-Android Application
-  -> Call / Voice Layer
-  -> Audio Capture
-  -> Audio Codec
-  -> Voice Packetizer
-  -> RF Transport Layer
-  -> USB / Serial Transport
-  -> RF Gateway
-  -> Digital RF Transceiver
-
-The code is intentionally structured so RF hardware is replaceable and testable through `MockRfTransport`.
-
-## RF engineering notes
-
-The final system must be designed to comply with applicable Indian wireless regulations for frequency, power, bandwidth, antenna, and duty cycle. This project does not select arbitrary frequencies or claim a legal operating mode.
-
-For real full-duplex voice, the preferred design is not LoRa in the normal voice-call sense. LoRa is generally not a good fit for low-latency, high-throughput, full-duplex voice. A real implementation typically needs a digital narrowband or broadband transceiver architecture with enough throughput and low enough latency to support bidirectional speech safely.
-
-## Why this project is phase-based
-
-This repository intentionally follows a staged build strategy:
-
-1. Android project and UI shell
-2. Device identity and settings
-3. RF simulator and discovery
-4. Call state machine
-5. Local audio capture/playback
-6. Simulated full-duplex call flow
-7. USB-based RF transport abstraction
-8. Real hardware integration later
-9. Encryption and channels after the core path is proven
-
-## Android architecture
-
-This project uses:
-
-- Kotlin
-- Jetpack Compose
-- MVVM-style screen state via `ViewModel`
-- StateFlow for UI state
-- Coroutines
-- AudioRecord / AudioTrack abstraction for the local audio pipeline
-
-## Files created
-
-- `settings.gradle.kts`
-- `build.gradle.kts`
-- `gradle.properties`
-- `app/build.gradle.kts`
-- `app/src/main/java/com/example/directrf/MainActivity.kt`
-- `app/src/main/java/com/example/directrf/service/CallController.kt`
-- `app/src/main/java/com/example/directrf/data/rf/MockRfTransport.kt`
-- `app/src/main/java/com/example/directrf/audio/AudioLoopback.kt`
-- `app/src/main/java/com/example/directrf/ui/DirectRfApp.kt`
-- `app/src/main/java/com/example/directrf/ui/screens/HomeScreen.kt`
-- `app/src/main/java/com/example/directrf/ui/screens/CallScreen.kt`
-
-## How to build
-
-Use a Java 17 environment and Android SDK already present on the machine. Then run:
-
-```bash
-cd "/Users/yusufkhan/Documents/rf app"
-export JAVA_HOME="/Users/yusufkhan/.local/java/jdk17/Contents/Home"
-export ANDROID_HOME="/Users/yusufkhan/Library/Android/sdk"
-export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
-./gradlew assembleDebug
+```sh
+./gradlew testDebugUnitTest compileDebugAndroidTestKotlin assembleDebug
 ```
 
-The APK will be generated under:
+The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Release signing is intentionally not configured in source; keep signing keys and credentials outside Git.
 
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
+## Use
 
-## RF simulator mode
+1. Install the same build on both phones and create a local display name.
+2. Open **Devices** on both phones and start discovery.
+3. Connect to the other phone. Compare the authentication digits shown on both screens and accept only if they match.
+4. Place a call, accept it on the other phone, and test mute, speaker/earpiece, and hang up.
 
-Developer mode is labeled explicitly as simulation-only. The app includes a mock RF transport and a state machine to emulate:
+The profile name is local and is advertised to nearby endpoints. There are no online accounts or permanent peer identity/pinning yet; the displayed authentication digits verify the current Nearby session only.
 
-- latency
-- packet loss
-- signal strength
-- call lifecycle progression
-- RF link health
+## Implementation notes
 
-This makes the Android application testable even without physical hardware.
+- `Transport` defines discover, connect, pairing confirmation, control/audio exchange, disconnect and status.
+- `NearbyConnectionsTransport` implements `P2P_POINT_TO_POINT`; Nearby Connections supplies the local link and encrypted connection.
+- Opus is provided by Android `MediaCodec`; devices must expose a usable Opus encoder/decoder. Calls fail with an error instead of silently falling back to fake audio.
+- Echo cancellation and noise suppression are enabled only when the device exposes those Android audio effects.
+- The manual device procedure is in [docs/MANUAL_TWO_PHONE_TEST.md](docs/MANUAL_TWO_PHONE_TEST.md).
+- Data handling is described in [PRIVACY.md](PRIVACY.md); connection authentication is in [docs/SECURITY.md](docs/SECURITY.md).
 
-## Hardware requirements for the real system
+## GitHub publishing
 
-Future real hardware must include:
-
-- USB-C / host-capable interface on the phone side
-- RF gateway controller board
-- Digital RF transceiver with enough throughput and latency budget
-- Legal antenna and matching network
-- Appropriate power and packaging
-
-This project deliberately avoids describing unsupported direct Android RF APIs.
-
-## Legal and regulatory note
-
-The real RF design must comply with all relevant Indian wireless regulations, including frequency selection, emissions, transmit power, antenna requirements, bandwidth, and duty cycle. This repository does not give legal operating instructions beyond the requirement to comply.
-
-## Documentation
-
-See the docs folder for deeper architecture notes on the RF protocol, audio pipeline, hardware integration, security model, and phase plan.
-
-## GitHub
-
-This workspace is not automatically connected to a GitHub repository. To publish it later, create a remote repository and run:
-
-```bash
-git init
-git add .
-git commit -m "Initial DirectRF prototype"
-git branch -M main
-git remote add origin <your-github-repo-url>
-git push -u origin main
-```
+No push has been made. Set the Git remote only after confirming the repository URL is real and ready. A license has not been selected; choose one before adding a `LICENSE` file or publishing the source.

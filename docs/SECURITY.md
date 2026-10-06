@@ -1,30 +1,17 @@
-# Security Architecture
+# Security
 
-## 1. Security requirements
+## Link and peer confirmation
 
-The final production system must support:
+Nearby Connections provides an encrypted connection. On each connection attempt, Nearby supplies the same authentication digits to both devices. DirectRF displays those digits and requires explicit user acceptance; users should reject the link if the codes differ or the peer is unexpected.
 
-- device authentication
-- secure key exchange
-- encrypted signaling
-- encrypted audio
-- replay protection
-- packet authentication
-- session keys
+The endpoint name is a profile display name, not a cryptographic identity. Endpoint IDs are session-scoped. The app has no account system, long-term peer key pinning, contact trust store, or app-managed end-to-end key protocol. The security guarantee currently relies on Nearby's encrypted authenticated connection and the users comparing its digits.
 
-## 2. Recommended primitives
+## Data and permissions
 
-For a production system, the design should use well-known primitives such as:
+The app requests Bluetooth/Nearby permissions for discovery, legacy location access only on Android versions that require it, microphone permission when calling, and notification permission on Android 13+ when starting call service. It has no app `INTERNET` permission and no signaling server.
 
-- X25519 for key agreement
-- AES-GCM or ChaCha20-Poly1305 for confidentiality and authentication
-- secure random session keys
-- Android Keystore for private key storage where appropriate
+The local profile and call metadata are stored in SharedPreferences. Audio is not intentionally recorded to persistent storage. See [PRIVACY.md](../PRIVACY.md).
 
-## 3. Important note
+## Verification
 
-This repository does not implement the final cryptographic layer yet. The current project is intentionally limited to the simulation and call-state architecture. The secure layer is planned after the core call flow is proven.
-
-## 4. Key storage rules
-
-Private keys must not be kept in plaintext. They should be backed by Android Keystore or an equivalent secure storage mechanism when the app targets a production security path.
+The code requests user confirmation before accepting Nearby connections. Security behavior has not been assessed by penetration testing or verified on two devices. Do not treat this prototype as a security-certified communications product.

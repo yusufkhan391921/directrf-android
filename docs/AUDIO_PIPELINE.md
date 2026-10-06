@@ -1,37 +1,17 @@
 # Audio Pipeline
 
-## 1. Local audio capture
+## Implemented path
 
-The app uses Android `AudioRecord` to capture microphone input.
+- Mono 48 kHz PCM capture from `AudioRecord` using `VOICE_COMMUNICATION`.
+- Android `MediaCodec` Opus encoder configured for 24 kbit/s and 20 ms input frames.
+- Sequenced, timestamped, length-checked audio frames sent by the selected `Transport`.
+- Received frames are passed through a bounded eight-frame jitter buffer with a three-frame startup target, decoded as Opus, then written to `AudioTrack`.
+- Microphone mute zeroes captured PCM. Speaker/earpiece routing uses Android communication-device routing where available.
+- Android `AcousticEchoCanceler` and `NoiseSuppressor` are enabled only when available for the recording session.
+- Audio runs in a microphone/connected-device foreground service and requests audio focus.
 
-## 2. Local playback
+## Compatibility and limits
 
-The app uses Android `AudioTrack` to play the received audio to the speaker path.
+Android documents Opus decoding from Android 5 and encoding from Android 10; this app sets minimum SDK 29. Runtime encoder availability is checked and failure is surfaced. OEM codec behavior, echo-control support, earpiece routing, and performance vary and must be checked on target devices.
 
-## 3. Prototype implementation
-
-This repository includes a loopback-style `AudioLoopback` class that demonstrates the capture and playback path at a basic level.
-
-This is not a production codec chain yet. It is a local audio pipeline foundation.
-
-## 4. Real production path
-
-The real implementation should be:
-
-Microphone -> AudioRecord -> PCM frames -> VAD -> codec -> encryption -> RF packetizer -> RF transport
-
-Receive side:
-
-RF transport -> packet validation -> decryption -> jitter buffer -> packet loss handling -> audio decode -> AudioTrack -> speaker
-
-## 5. Why jitter buffer is required
-
-VoIP and RF voice systems can experience variable arrival times. A jitter buffer smooths these timing differences and reduces audible dropouts caused by packet delay swings.
-
-## 6. Full-duplex requirement
-
-The design must allow simultaneous bidirectional audio streams. The app must not rely on push-to-talk semantics.
-
-## 7. Codec choice and notes
-
-Opus is a strong candidate for a production implementation because it is designed for low-latency real-time audio and adapts well to variable network conditions. However, the chosen hardware must still support the required throughput and latency budget, which must be validated against the actual RF path.
+The frame protocol and JVM jitter tests are locally testable. Codec behavior is covered by `OpusCodecInstrumentedTest`, but that test has not been run on a physical phone here. Audio quality, echo, interruption recovery, and two-way operation are not verified until the manual two-phone procedure passes.
